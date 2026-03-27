@@ -577,12 +577,6 @@ export default function SwissDashboard() {
         }}
       >
         <span>Model: {dash.model_version?.split(":")[0]}</span>
-        <Link
-          href="/editorial"
-          style={{ color: c.accentRed, textDecoration: "none" }}
-        >
-          Switch to Editorial →
-        </Link>
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ def recommendations(
     horizon: int | None = Query(default=None, description="prediction horizon in trading days"),
     top_n: int | None = Query(default=None, ge=1, le=50),
     side: str = Query(default="both", description="long|short|both"),
+    live: bool = Query(default=False, description="force live model inference instead of saved snapshot"),
     service: StockXpertBackendService = Depends(get_service),
 ) -> RecommendationsResponse:
     settings = get_settings()
@@ -28,4 +29,6 @@ def recommendations(
         horizon=horizon or settings.default_horizon,
         top_n=top_n or settings.default_top_n,
         side=side,
+        prefer_saved=not live,
+        force_live=live,
     )

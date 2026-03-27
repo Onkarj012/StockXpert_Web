@@ -20,6 +20,7 @@ class Settings:
     off_market_ttl_seconds: int
     market_index_symbol: str
     market_timezone: str
+    recommendations_snapshot_dir: Path
 
 
 @lru_cache(maxsize=1)
@@ -43,6 +44,14 @@ def get_settings() -> Settings:
         if not sentiment_path.is_absolute():
             sentiment_path = backend_root / sentiment_path
 
+    snapshot_raw = os.getenv(
+        "STOCKXPERT_RECOMMENDATIONS_SNAPSHOT_DIR",
+        str(backend_root / "artifacts" / "cache"),
+    )
+    snapshot_dir = Path(snapshot_raw)
+    if not snapshot_dir.is_absolute():
+        snapshot_dir = backend_root / snapshot_dir
+
     return Settings(
         app_name="StockXpert Backend",
         app_version="0.2.0",
@@ -56,4 +65,5 @@ def get_settings() -> Settings:
         off_market_ttl_seconds=int(os.getenv("STOCKXPERT_OFF_MARKET_TTL", "3600")),
         market_index_symbol=os.getenv("STOCKXPERT_MARKET_INDEX", "^NSEI"),
         market_timezone=os.getenv("STOCKXPERT_MARKET_TIMEZONE", "Asia/Kolkata"),
+        recommendations_snapshot_dir=snapshot_dir,
     )

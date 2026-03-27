@@ -5,8 +5,7 @@ def filter_side(cards: list[dict], side: str) -> list[dict]:
     normalized = side.lower()
     if normalized == "both":
         return cards
-    target = "LONG" if normalized == "long" else "SHORT"
-    return [card for card in cards if card.get("direction") == target]
+    return [card for card in cards if card.get("direction") == normalized]
 
 
 def sort_cards(cards: list[dict]) -> list[dict]:

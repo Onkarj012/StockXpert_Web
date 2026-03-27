@@ -9,6 +9,32 @@ from typing import Optional, Tuple, List
 from .fibonacci import compute_fibonacci_levels
 
 
+def _to_series(value: pd.Series | pd.DataFrame, name: str) -> pd.Series:
+    """Coerce pandas selection to a single Series."""
+    if isinstance(value, pd.DataFrame):
+        if value.shape[1] == 0:
+            return pd.Series(index=value.index, dtype=float, name=name)
+        return value.iloc[:, 0].rename(name)
+    return value.rename(name)
+
+
+def _normalize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Ensure OHLCV columns are single Series even if duplicate columns exist.
+    Some providers can yield repeated labels (e.g. MultiIndex flattening edge cases).
+    """
+    normalized = df.copy()
+    for col in ("Open", "High", "Low", "Close", "Volume"):
+        if col not in normalized.columns:
+            continue
+        series = _to_series(normalized[col], col)
+        duplicate_mask = normalized.columns == col
+        if duplicate_mask.any():
+            normalized = normalized.loc[:, ~duplicate_mask]
+        normalized[col] = series
+    return normalized
+
+
 
 
 def compute_cross_asset_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -65,12 +91,14 @@ def compute_relative_volume(volume: pd.Series, window: int = 10) -> pd.Series:
 
 def compute_log_return(df: pd.DataFrame) -> pd.Series:
     """Log return: log(Close_t / Close_{t-1})"""
-    return np.log(df['Close'] / df['Close'].shift(1))
+    close = _to_series(df['Close'], 'Close')
+    return np.log(close / close.shift(1))
 
 
 def compute_volume_change(df: pd.DataFrame) -> pd.Series:
     """Volume change: (Volume_t - Volume_{t-1}) / Volume_{t-1}"""
-    return df['Volume'].pct_change()
+    volume = _to_series(df['Volume'], 'Volume')
+    return volume.pct_change()
 
 
 def compute_rsi(series: pd.Series, period: int = 14) -> pd.Series:
@@ -485,6 +513,7 @@ def compute_all_indicators(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame with all indicator columns added
     """
+    df = _normalize_ohlcv(df)
     result = df.copy()
     
     # Basic returns

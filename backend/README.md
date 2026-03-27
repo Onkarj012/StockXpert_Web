@@ -60,8 +60,11 @@ Inputs:
 - `horizon` optional trading-day horizon
 - `top_n` optional recommendation limit
 - `side` one of `long`, `short`, `both`
+- `live` optional boolean. If `true`, bypasses saved snapshot and runs live inference.
 
 Returns ranked ML recommendation cards.
+
+By default this endpoint serves from the latest saved daily snapshot (today first, then live fallback).
 
 ### `GET /api/stocks/{ticker}`
 Returns current price, multi-horizon predictions, key indicators, support/resistance, and chart-ready history.
@@ -77,6 +80,22 @@ Returns OHLCV points plus overlays for chart rendering.
    `uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload`
 3. Open docs:
    `http://127.0.0.1:8000/docs`
+
+## Daily Snapshot Workflow
+
+Build recommendations for all trained symbols and horizons (1/3/5/7/10), then save to a local JSON snapshot:
+
+`python -m backend.app.jobs.build_recommendation_snapshot`
+
+Default snapshot location:
+
+- `backend/artifacts/cache/recommendations_YYYY-MM-DD.json`
+
+Recommended schedule:
+
+- run once after market close (or early morning before frontend traffic)
+- frontend calls `/api/recommendations` as usual and receives saved data
+- use `?live=true` only for debugging/recompute checks
 
 ## Environment Variables
 
@@ -98,6 +117,8 @@ Returns OHLCV points plus overlays for chart rendering.
   Index ticker used for regime summary. Default: `^NSEI`
 - `STOCKXPERT_MARKET_TIMEZONE`
   Market timezone used in timestamps. Default: `Asia/Kolkata`
+- `STOCKXPERT_RECOMMENDATIONS_SNAPSHOT_DIR`
+  Directory for saved recommendation snapshots. Default: `backend/artifacts/cache`
 
 ## Moving `backend/` To A New Repo
 

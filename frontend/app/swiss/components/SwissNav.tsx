@@ -116,7 +116,7 @@ export default function SwissNav({
         </nav>
 
         {/* Search */}
-        <StockSearch basePath="/swiss" theme="swiss" />
+        <StockSearch basePath="/swiss" />
 
         {/* Dark mode toggle */}
         {toggleMode && (
@@ -142,23 +142,6 @@ export default function SwissNav({
             )}
           </button>
         )}
-
-        {/* Switch to Editorial */}
-        <Link
-          href="/editorial"
-          style={{
-            fontFamily: HV,
-            fontSize: "11px",
-            color: textSecondary,
-            letterSpacing: "0.15em",
-            textTransform: "uppercase",
-            textDecoration: "none",
-            whiteSpace: "nowrap",
-            flexShrink: 0,
-          }}
-        >
-          → Editorial
-        </Link>
       </div>
     </header>
   );

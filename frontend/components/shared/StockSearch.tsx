@@ -6,14 +6,14 @@ import { Search, X } from "lucide-react";
 import { NSE_SYMBOLS, COMPANY_NAMES, SECTOR_MAP } from "@/lib/utils/trading";
 
 interface StockSearchProps {
-  basePath: string; // e.g. '/editorial' or '/swiss'
-  theme: "editorial" | "swiss";
+  basePath?: string;
+  theme?: "editorial" | "swiss";
   placeholder?: string;
 }
 
 export default function StockSearch({
-  basePath,
-  theme,
+  basePath = "/swiss",
+  theme = "swiss",
   placeholder = "Search stocks…",
 }: StockSearchProps) {
   const [query, setQuery] = useState("");

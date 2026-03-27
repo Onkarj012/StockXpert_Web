@@ -10,6 +10,97 @@ import torch
 from backend.app.core.errors import DataUnavailableError
 from backend.app.engine.checkpoint_loader import RuntimeBundle
 
+SYMBOL_SECTORS: dict[str, str] = {
+    "RELIANCE.NS": "Energy",
+    "TCS.NS": "IT",
+    "HDFCBANK.NS": "Financial Services",
+    "INFOSYS.NS": "IT",
+    "ICICIBANK.NS": "Financial Services",
+    "HINDUNILVR.NS": "FMCG",
+    "LT.NS": "Infrastructure",
+    "SBIN.NS": "Financial Services",
+    "BHARTIARTL.NS": "Telecom",
+    "ITC.NS": "FMCG",
+    "KOTAKBANK.NS": "Financial Services",
+    "AXISBANK.NS": "Financial Services",
+    "ASIANPAINT.NS": "Consumer Goods",
+    "MARUTI.NS": "Automobile",
+    "SUNPHARMA.NS": "Pharma",
+    "TITAN.NS": "Consumer Goods",
+    "BAJFINANCE.NS": "Financial Services",
+    "NESTLEIND.NS": "FMCG",
+    "ONGC.NS": "Energy",
+    "JSWSTEEL.NS": "Metals",
+    "HCLTECH.NS": "IT",
+    "WIPRO.NS": "IT",
+    "ULTRACEMCO.NS": "Cement",
+    "ADANIPORTS.NS": "Infrastructure",
+    "POWERGRID.NS": "Power",
+    "NTPC.NS": "Power",
+    "COALINDIA.NS": "Energy",
+    "INDUSINDBK.NS": "Financial Services",
+    "M&M.NS": "Automobile",
+    "TECHM.NS": "IT",
+    "BAJAJFINSV.NS": "Financial Services",
+    "CIPLA.NS": "Pharma",
+    "DRREDDY.NS": "Pharma",
+    "HEROMOTOCO.NS": "Automobile",
+    "EICHERMOT.NS": "Automobile",
+    "GRASIM.NS": "Cement",
+    "ADANIENT.NS": "Conglomerate",
+    "ADANIPOWER.NS": "Power",
+    "BPCL.NS": "Energy",
+    "BRITANNIA.NS": "FMCG",
+    "CHOLAFIN.NS": "Financial Services",
+    "COLPAL.NS": "FMCG",
+    "DIVISLAB.NS": "Pharma",
+    "DLF.NS": "Real Estate",
+    "GAIL.NS": "Energy",
+    "GODREJCP.NS": "FMCG",
+    "HAL.NS": "Aerospace",
+    "HAVELLS.NS": "Consumer Goods",
+    "HDFCLIFE.NS": "Insurance",
+    "ICICIGI.NS": "Insurance",
+    "ICICIPRULI.NS": "Insurance",
+    "IOC.NS": "Energy",
+    "JINDALSTEL.NS": "Metals",
+    "JUBLFOOD.NS": "FMCG",
+    "KFA.NS": "FMCG",
+    "LICHSGFIN.NS": "Insurance",
+    "LTIM.NS": "IT",
+    "LUPIN.NS": "Pharma",
+    "MARICO.NS": "FMCG",
+    "MOTHERSON.NS": "Automobile",
+    "NMDC.NS": "Metals",
+    "OBEROIREALTY.NS": "Real Estate",
+    "ONGC.NS": "Energy",
+    "PERSISTENT.NS": "IT",
+    "PIDILITIND.NS": "Chemicals",
+    "PFC.NS": "Financial Services",
+    "POWERGRID.NS": "Power",
+    "RECLTD.NS": "Financial Services",
+    "SAIL.NS": "Metals",
+    "SBILIFE.NS": "Insurance",
+    "SHREECEM.NS": "Cement",
+    "SHRIRAMFIN.NS": "Financial Services",
+    "SIEMENS.NS": "Industrial",
+    "SUNTV.NS": "Media",
+    "TATACONSUM.NS": "FMCG",
+    "TATASTEEL.NS": "Metals",
+    "TCS.NS": "IT",
+    "TECHM.NS": "IT",
+    "TORNTPHARM.NS": "Pharma",
+    "TRENT.NS": "Retail",
+    "TVSMOTOR.NS": "Automobile",
+    "UNIONBANK.NS": "Financial Services",
+    "UPL.NS": "Chemicals",
+    "VEDL.NS": "Metals",
+    "WIPRO.NS": "IT",
+    "ZOMATO.NS": "IT",
+    "INFY.NS": "IT",
+    "HDFCBANK.NS": "Financial Services",
+}
+
 
 @dataclass
 class PreparedSymbol:
@@ -113,8 +204,8 @@ class BackendPredictor:
                 abs_dlog = abs(raw_mag) * vol_ref
                 expected_return = math.exp(abs_dlog) - 1.0
                 signed_return = expected_return if p_up >= 0.5 else -expected_return
-                direction = "LONG" if p_up >= 0.5 else "SHORT"
-                stop_loss = close - (1.5 * atr) if direction == "LONG" else close + (1.5 * atr)
+                direction = "long" if p_up >= 0.5 else "short"
+                stop_loss = close - (1.5 * atr) if direction == "long" else close + (1.5 * atr)
                 support = close * math.exp(float(level_pred[row_idx, horizon_idx, 1].item()) * vol_ref)
                 resistance = close * math.exp(float(level_pred[row_idx, horizon_idx, 0].item()) * vol_ref)
                 risk = abs(close - stop_loss)
@@ -136,6 +227,7 @@ class BackendPredictor:
                         "expected_return_pct": signed_return * 100.0,
                         "risk_reward_ratio": risk_reward_ratio,
                         "horizon": f"H{horizon}",
+                        "sector": SYMBOL_SECTORS.get(item.symbol),
                         "support": support,
                         "resistance": resistance,
                         "secondary": {
