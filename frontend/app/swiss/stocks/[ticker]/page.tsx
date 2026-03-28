@@ -38,6 +38,7 @@ export default function SwissStockDetail() {
   const { data: dive, loading } = useStockDeepDive(ticker, 90);
   const { toggle, has } = useWatchlist();
   const c = useSwissTheme();
+  const isDark = c.isDark;
   const [overlays, setOverlays] = useState({
     sma20: true,
     sma50: false,
@@ -88,12 +89,33 @@ export default function SwissStockDetail() {
   return (
     <div className="py-12">
       {/* Breadcrumb */}
-      <div style={{ display: "flex", alignItems: "center", gap: "6px", fontFamily: HV, fontSize: "10px", color: c.textMuted, marginBottom: "24px", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-        <Link href="/swiss" style={{ color: c.accentRed, textDecoration: "none" }}>Dashboard</Link>
-        <span>/</span>
-        <Link href="/swiss/recommendations" style={{ color: c.accentRed, textDecoration: "none" }}>Signals</Link>
-        <span>/</span>
-        <span style={{ color: c.textPrimary }}>{formatTicker(ticker)}</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontFamily: HV, fontSize: "10px", color: c.textMuted, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+          <Link href="/swiss" style={{ color: c.accentRed, textDecoration: "none" }}>Dashboard</Link>
+          <span>/</span>
+          <Link href="/swiss/recommendations" style={{ color: c.accentRed, textDecoration: "none" }}>Signals</Link>
+          <span>/</span>
+          <span style={{ color: c.textPrimary }}>{formatTicker(ticker)}</span>
+        </div>
+        <Link
+          href={`/swiss/chart/${ticker}`}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "8px 16px",
+            background: c.textPrimary,
+            color: c.bgPrimary,
+            textDecoration: "none",
+            fontFamily: HV,
+            fontSize: "10px",
+            fontWeight: 700,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+          }}
+        >
+          Full Screen Chart
+        </Link>
       </div>
 
       {/* ═══ ASYMMETRIC HERO ═══ */}
@@ -294,6 +316,7 @@ export default function SwissStockDetail() {
         <OHLCVChart
           data={dive.chart.slice(-lookback)}
           theme="swiss"
+          isDark={isDark}
           height={380}
           overlays={overlays}
           showVolume

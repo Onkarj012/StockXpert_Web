@@ -325,7 +325,7 @@ export default function SwissDashboard() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 2.5fr 4.5rem 4rem 4rem 4rem 3rem",
+              gridTemplateColumns: "1fr 2.5fr 4.5rem 4rem 4rem 4rem 3rem 3rem",
               gap: "12px",
               borderTop: `2px solid ${c.textPrimary}`,
               borderBottom: `2px solid ${c.textPrimary}`,
@@ -344,6 +344,7 @@ export default function SwissDashboard() {
             <div style={{ textAlign: "right" }}>Return</div>
             <div style={{ textAlign: "right" }}>Entry</div>
             <div style={{ textAlign: "right" }}>Target</div>
+            <div style={{ textAlign: "center" }}>Chart</div>
             <div style={{ textAlign: "center" }}>WL</div>
           </div>
 
@@ -361,7 +362,7 @@ export default function SwissDashboard() {
                 key={card.ticker}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 2.5fr 4.5rem 4rem 4rem 4rem 3rem",
+                  gridTemplateColumns: "1fr 2.5fr 4.5rem 4rem 4rem 4rem 3rem 3rem",
                   gap: "12px",
                   padding: "10px 0",
                   borderBottom: `1px solid ${c.borderSubtle}`,
@@ -445,6 +446,22 @@ export default function SwissDashboard() {
                   }}
                 >
                   ₹{formatPrice(card.target_price)}
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <Link
+                    href={`/swiss/chart/${card.ticker}`}
+                    style={{
+                      fontSize: "9px",
+                      fontWeight: 700,
+                      color: c.accentRed,
+                      textDecoration: "none",
+                      padding: "2px 4px",
+                      border: `1px solid ${c.accentRed}`,
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    CHART
+                  </Link>
                 </div>
                 <div style={{ textAlign: "center" }}>
                   <button

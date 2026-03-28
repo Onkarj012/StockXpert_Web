@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   ComposedChart,
   Bar,
@@ -10,7 +10,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
+  ReferenceArea,
 } from "recharts";
 import type { ChartPoint } from "@/types/api";
 
@@ -116,6 +116,26 @@ export const CHART_THEMES: Record<string, ChartTheme> = {
     backgroundColor: "#ffffff",
     fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
   },
+  swissDark: {
+    candleUp: "#00bdf0",
+    candleDown: "#e84040",
+    gridColor: "rgba(255,255,255,0.08)",
+    textColor: "#888888",
+    volumeColor: "rgba(255,255,255,0.12)",
+    axisColor: "#333333",
+    tooltipBg: "#141414",
+    tooltipBorder: "#e84040",
+    tooltipText: "#f5f5f5",
+    lineColors: {
+      sma20: "#e84040",
+      sma50: "#ffffff",
+      bbUpper: "#555555",
+      bbLower: "#555555",
+      vwap: "#888888",
+    },
+    backgroundColor: "#0a0a0a",
+    fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+  },
   cyber: {
     candleUp: "#00ffff",
     candleDown: "#ff00ff",
@@ -138,46 +158,62 @@ export const CHART_THEMES: Record<string, ChartTheme> = {
   },
 };
 
-// Candlestick as a custom bar shape
+interface CandleData extends ChartPoint {
+  yOffset: number;
+  priceScale: (v: number) => number;
+}
+
 interface CandleProps {
   x?: number;
   y?: number;
   width?: number;
   height?: number;
-  payload?: ChartPoint;
+  payload?: CandleData;
   theme?: ChartTheme;
-  dataKey?: string;
 }
 
-function CustomCandlestick(props: CandleProps) {
-  const { x = 0, y = 0, width = 0, payload, theme } = props;
+function Candlestick(props: CandleProps) {
+  const { x = 0, width = 0, payload, theme } = props;
   if (!payload) return null;
 
-  const { open, high, low, close } = payload;
+  const { open, high, low, close, yOffset, priceScale } = payload;
+  if (!priceScale || high == null || low == null || open == null || close == null) {
+    return null;
+  }
+
   const isUp = close >= open;
-  const color = isUp
-    ? (theme?.candleUp ?? "#00ff41")
-    : (theme?.candleDown ?? "#ff0040");
-
-  const priceRange = high - low;
-  if (priceRange === 0) return null;
-
-  // We need chart scale, use recharts yAxis values
-  // Since we use Bar underneath, we can derive scale from y and height
-  // But for simple approach we use a Scatter/custom approach below
-  // Fallback: render a colored rectangle showing direction
-  const rectWidth = Math.max(width * 0.6, 2);
-  const rectX = x + (width - rectWidth) / 2;
+  const color = isUp ? (theme?.candleUp ?? "#00ff41") : (theme?.candleDown ?? "#ff0040");
+  
+  const bodyTop = priceScale(Math.max(open, close));
+  const bodyBottom = priceScale(Math.min(open, close));
+  const bodyHeight = Math.max(bodyBottom - bodyTop, 1);
+  
+  const wickTop = priceScale(high);
+  const wickBottom = priceScale(low);
+  
+  const wickWidth = Math.max(width * 0.06, 1);
+  const bodyWidth = Math.max(width * 0.7, 3);
 
   return (
-    <rect
-      x={rectX}
-      y={y}
-      width={rectWidth}
-      height={Math.max(Math.abs(props.height ?? 4), 2)}
-      fill={color}
-      rx={0}
-    />
+    <g>
+      <line
+        x1={x + width / 2}
+        y1={wickTop - yOffset}
+        x2={x + width / 2}
+        y2={wickBottom - yOffset}
+        stroke={color}
+        strokeWidth={wickWidth}
+      />
+      <rect
+        x={x + (width - bodyWidth) / 2}
+        y={bodyTop - yOffset}
+        width={bodyWidth}
+        height={bodyHeight}
+        fill={isUp ? color : color}
+        stroke={color}
+        strokeWidth={1}
+      />
+    </g>
   );
 }
 
@@ -190,8 +226,10 @@ interface CustomTooltipProps {
 
 function CustomTooltip({ active, payload, label, theme }: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
-  const d = payload[0]?.payload;
+  const d = payload[0]?.payload as ChartPoint;
   if (!d) return null;
+
+  const isUp = d.close >= d.open;
 
   return (
     <div
@@ -205,26 +243,26 @@ function CustomTooltip({ active, payload, label, theme }: CustomTooltipProps) {
         minWidth: "160px",
       }}
     >
-      <div style={{ fontWeight: 700, marginBottom: 6 }}>{label}</div>
-      <div>
-        O: <strong>{d.open?.toFixed(2)}</strong>
+      <div style={{ fontWeight: 700, marginBottom: 6, borderBottom: `2px solid ${isUp ? theme.candleUp : theme.candleDown}`, paddingBottom: 4 }}>
+        {label}
       </div>
-      <div>
-        H: <strong>{d.high?.toFixed(2)}</strong>
-      </div>
-      <div>
-        L: <strong>{d.low?.toFixed(2)}</strong>
-      </div>
-      <div>
-        C: <strong>{d.close?.toFixed(2)}</strong>
+      <div style={{ display: "grid", gridTemplateColumns: "auto auto", gap: "2px 12px" }}>
+        <span style={{ color: theme.textColor }}>O</span>
+        <strong style={{ textAlign: "right" }}>{d.open?.toFixed(2)}</strong>
+        <span style={{ color: theme.textColor }}>H</span>
+        <strong style={{ textAlign: "right", color: theme.candleUp }}>{d.high?.toFixed(2)}</strong>
+        <span style={{ color: theme.textColor }}>L</span>
+        <strong style={{ textAlign: "right", color: theme.candleDown }}>{d.low?.toFixed(2)}</strong>
+        <span style={{ color: theme.textColor }}>C</span>
+        <strong style={{ textAlign: "right", color: isUp ? theme.candleUp : theme.candleDown }}>{d.close?.toFixed(2)}</strong>
       </div>
       {d.volume && (
-        <div style={{ marginTop: 4 }}>
-          Vol: <strong>{(d.volume / 1000000).toFixed(1)}M</strong>
+        <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${theme.axisColor}` }}>
+          <span style={{ color: theme.textColor }}>Vol:</span> <strong>{(d.volume / 1000000).toFixed(1)}M</strong>
         </div>
       )}
       {d.sma_20 && (
-        <div style={{ color: theme.lineColors.sma20 }}>
+        <div style={{ marginTop: 4, color: theme.lineColors.sma20 }}>
           SMA20: {d.sma_20?.toFixed(2)}
         </div>
       )}
@@ -240,6 +278,7 @@ function CustomTooltip({ active, payload, label, theme }: CustomTooltipProps) {
 interface OHLCVChartProps {
   data: ChartPoint[];
   theme?: string | ChartTheme;
+  isDark?: boolean;
   height?: number;
   overlays?: {
     sma20?: boolean;
@@ -254,23 +293,35 @@ interface OHLCVChartProps {
 export default function OHLCVChart({
   data,
   theme = "brutal",
+  isDark = false,
   height = 380,
   overlays = { sma20: true, sma50: true, bollingerBands: false, vwap: false },
   showVolume = true,
   className = "",
 }: OHLCVChartProps) {
-  const t =
-    typeof theme === "string"
-      ? (CHART_THEMES[theme] ?? CHART_THEMES.brutal)
-      : theme;
+  const getTheme = () => {
+    if (typeof theme !== "string") return theme;
+    if (theme === "swiss" && isDark) return CHART_THEMES.swissDark;
+    return CHART_THEMES[theme] ?? CHART_THEMES.brutal;
+  };
+  const t = getTheme();
 
-  // Separate chart heights
   const priceH = showVolume ? Math.round(height * 0.72) : height;
   const volumeH = showVolume ? height - priceH - 4 : 0;
 
-  const prices = data.map((d) => d.close).filter(Boolean);
-  const minPrice = Math.min(...prices) * 0.998;
-  const maxPrice = Math.max(...prices) * 1.002;
+  const prices = data.flatMap((d) => [d.high ?? d.close, d.low ?? d.close]).filter(Boolean);
+  const minPrice = Math.min(...prices) * 0.995;
+  const maxPrice = Math.max(...prices) * 1.005;
+
+  const priceScale = (v: number) => {
+    return priceH - ((v - minPrice) / (maxPrice - minPrice)) * priceH;
+  };
+
+  const enrichedData = data.map((d) => ({
+    ...d,
+    yOffset: 0,
+    priceScale,
+  }));
 
   return (
     <div
@@ -280,11 +331,10 @@ export default function OHLCVChart({
         fontFamily: t.fontFamily,
       }}
     >
-      {/* Price Chart */}
       <ResponsiveContainer width="100%" height={priceH}>
         <ComposedChart
-          data={data}
-          margin={{ top: 4, right: 12, left: 0, bottom: 0 }}
+          data={enrichedData}
+          margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
         >
           <CartesianGrid
             strokeDasharray="3 3"
@@ -308,50 +358,10 @@ export default function OHLCVChart({
             axisLine={{ stroke: t.axisColor }}
             tickLine={false}
             tickFormatter={(v: number) => v.toFixed(0)}
-            width={52}
+            width={56}
           />
           <Tooltip content={<CustomTooltip theme={t} />} />
 
-          {/* Candlestick using High-Low as Bar + Open-Close as Bar */}
-          <Bar dataKey="low" fill="transparent" legendType="none" />
-          <Bar
-            dataKey="high"
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            shape={(props: any) => <CustomCandlestick {...props} theme={t} />}
-            fill={t.candleUp}
-            legendType="none"
-          />
-
-          {/* Price line fallback for visibility */}
-          <Line
-            type="monotone"
-            dataKey="close"
-            stroke={t.candleUp}
-            strokeWidth={1.5}
-            dot={false}
-            legendType="none"
-          />
-
-          {overlays.sma20 && (
-            <Line
-              type="monotone"
-              dataKey="sma_20"
-              stroke={t.lineColors.sma20}
-              strokeWidth={1}
-              dot={false}
-              strokeDasharray="4 2"
-            />
-          )}
-          {overlays.sma50 && (
-            <Line
-              type="monotone"
-              dataKey="sma_50"
-              stroke={t.lineColors.sma50}
-              strokeWidth={1}
-              dot={false}
-              strokeDasharray="6 3"
-            />
-          )}
           {overlays.bollingerBands && (
             <>
               <Line
@@ -360,7 +370,7 @@ export default function OHLCVChart({
                 stroke={t.lineColors.bbUpper}
                 strokeWidth={1}
                 dot={false}
-                strokeDasharray="2 4"
+                strokeDasharray="3 3"
               />
               <Line
                 type="monotone"
@@ -368,9 +378,29 @@ export default function OHLCVChart({
                 stroke={t.lineColors.bbLower}
                 strokeWidth={1}
                 dot={false}
-                strokeDasharray="2 4"
+                strokeDasharray="3 3"
               />
             </>
+          )}
+
+          {overlays.sma50 && (
+            <Line
+              type="monotone"
+              dataKey="sma_50"
+              stroke={t.lineColors.sma50}
+              strokeWidth={1.5}
+              dot={false}
+              strokeDasharray="5 3"
+            />
+          )}
+          {overlays.sma20 && (
+            <Line
+              type="monotone"
+              dataKey="sma_20"
+              stroke={t.lineColors.sma20}
+              strokeWidth={1.5}
+              dot={false}
+            />
           )}
           {overlays.vwap && (
             <Line
@@ -379,12 +409,19 @@ export default function OHLCVChart({
               stroke={t.lineColors.vwap}
               strokeWidth={1.5}
               dot={false}
+              strokeDasharray="2 2"
             />
           )}
+
+          <Bar
+            dataKey="close"
+            shape={(props: CandleProps) => <Candlestick {...props} theme={t} />}
+            legendType="none"
+            isAnimationActive={false}
+          />
         </ComposedChart>
       </ResponsiveContainer>
 
-      {/* Volume Chart */}
       {showVolume && (
         <ResponsiveContainer width="100%" height={volumeH}>
           <ComposedChart
@@ -402,9 +439,13 @@ export default function OHLCVChart({
               axisLine={false}
               tickLine={false}
               tickFormatter={(v: number) => `${(v / 1000000).toFixed(0)}M`}
-              width={52}
+              width={56}
             />
-            <Bar dataKey="volume" fill={t.volumeColor} />
+            <Bar
+              dataKey="volume"
+              fill={t.volumeColor}
+              radius={[1, 1, 0, 0]}
+            />
           </ComposedChart>
         </ResponsiveContainer>
       )}
@@ -412,7 +453,6 @@ export default function OHLCVChart({
   );
 }
 
-// Overlay toggle button component
 interface OverlayToggleProps {
   label: string;
   active: boolean;
@@ -428,22 +468,24 @@ export function OverlayToggle({
   onClick,
   style = "brutal",
 }: OverlayToggleProps) {
-  const styles: Record<string, string> = {
-    brutal: `font-mono text-xs px-3 py-1 border-2 cursor-pointer transition-all select-none ${active ? "text-black" : "bg-transparent"}`,
-    editorial: `text-xs px-3 py-1 border cursor-pointer transition-all select-none ${active ? "text-white" : "bg-transparent"}`,
-    glass: `text-xs px-3 py-1 rounded-full cursor-pointer transition-all select-none backdrop-blur-sm`,
-    swiss: `text-xs px-3 py-1 cursor-pointer transition-all select-none uppercase tracking-widest`,
-    cyber: `text-xs px-3 py-1 cursor-pointer transition-all select-none font-mono`,
+  const baseStyles: Record<string, string> = {
+    brutal: "font-mono text-xs px-3 py-1 border-2 cursor-pointer transition-all select-none",
+    editorial: "text-xs px-3 py-1 border cursor-pointer transition-all select-none",
+    glass: "text-xs px-3 py-1 rounded-full cursor-pointer transition-all select-none backdrop-blur-sm",
+    swiss: "text-xs px-3 py-1 cursor-pointer transition-all select-none uppercase tracking-widest",
+    cyber: "text-xs px-3 py-1 cursor-pointer transition-all select-none font-mono",
   };
 
   return (
     <button
       onClick={onClick}
-      className={styles[style]}
+      className={baseStyles[style] ?? baseStyles.brutal}
       style={{
         borderColor: color,
         backgroundColor: active ? color : "transparent",
-        color: active ? (style === "glass" ? "#000" : undefined) : color,
+        color: active 
+          ? (style === "glass" ? "#000000" : style === "swiss" ? "#ffffff" : "#ffffff")
+          : color,
       }}
     >
       {label}

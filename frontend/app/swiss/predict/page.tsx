@@ -39,6 +39,7 @@ export default function SwissPredict() {
   const horizonDays = isFuture ? Math.max(1, Math.min(10, dayOffset)) : 1;
 
   const { data: dive, loading } = useStockDeepDive(selectedTicker, lookback);
+  const isDark = c.isDark;
 
   const predictions = dive?.predictions ?? {};
   const relevantPred = predictions[String(horizonDays)] ?? predictions[`${horizonDays}d`] ?? Object.values(predictions)[0];
@@ -246,7 +247,7 @@ export default function SwissPredict() {
                 ))}
               </div>
             </div>
-            <OHLCVChart data={dive.chart} theme="swiss" height={360} overlays={overlays} showVolume />
+            <OHLCVChart data={dive.chart} theme="swiss" isDark={isDark} height={360} overlays={overlays} showVolume />
           </div>
 
           {/* S/R + Indicators */}

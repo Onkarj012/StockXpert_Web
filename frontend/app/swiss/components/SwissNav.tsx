@@ -62,20 +62,7 @@ export default function SwissNav({
             STOCK<span style={{ color: accentColor }}>XPERT</span>
           </div>
           <div style={{ width: "1px", height: "18px", background: borderC }} />
-          <div
-            style={{
-              fontFamily: HV,
-              fontSize: "10px",
-              color: textSecondary,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              lineHeight: 1.2,
-            }}
-          >
-            Swiss
-            <br />
-            Design
-          </div>
+          
         </Link>
 
         {/* Nav */}

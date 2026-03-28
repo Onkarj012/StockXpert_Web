@@ -58,9 +58,12 @@ function SwissRecommendationsInner() {
   const [search, setSearch] = useState("");
   const c = useSwissTheme();
 
-  const { data, loading } = useRecommendations({ horizon, side, top_n: topN });
+  const { data, loading } = useRecommendations({ horizon, top_n: topN });
 
   let cards = data?.cards ?? [];
+  if (side !== "both") {
+    cards = cards.filter((card) => card.direction === side);
+  }
   if (search)
     cards = cards.filter(
       (card) =>
@@ -170,17 +173,18 @@ function SwissRecommendationsInner() {
           </div>
           <div style={{ display: "flex", gap: "3px" }}>
             {(["both", "long", "short"] as const).map((s) => {
-              const sc = s === "long" ? c.accentCyan : s === "short" ? c.accentRed : c.textPrimary;
+              const sc = s === "long" ? c.accentCyan : s === "short" ? c.accentRed : c.accentNeutral;
+              const isActive = side === s;
               return (
                 <button
                   key={s}
                   onClick={() => setSide(s)}
                   style={{
-                    fontFamily: HV, fontSize: "10px", fontWeight: side === s ? 700 : 400,
+                    fontFamily: HV, fontSize: "10px", fontWeight: isActive ? 700 : 400,
                     padding: "4px 10px",
-                    background: side === s ? sc : "transparent",
-                    border: `1px solid ${side === s ? sc : c.borderSecondary}`,
-                    color: side === s ? "#fff" : sc,
+                    background: isActive ? sc : "transparent",
+                    border: `1px solid ${isActive ? sc : c.borderSecondary}`,
+                    color: isActive ? "#fff" : c.textSecondary,
                     cursor: "pointer", textTransform: "capitalize", letterSpacing: "0.05em",
                   }}
                 >
