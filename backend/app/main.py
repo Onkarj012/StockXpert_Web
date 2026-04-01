@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.core.artifacts import ArtifactRegistry
 from backend.app.core.cache import TTLCache
@@ -49,6 +50,15 @@ app = FastAPI(
     ],
     lifespan=lifespan,
 )
+
+if settings.cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(settings.cors_origins),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 @app.get("/", response_model=RootResponse, tags=["health"])

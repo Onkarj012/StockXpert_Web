@@ -21,6 +21,7 @@ class Settings:
     market_index_symbol: str
     market_timezone: str
     recommendations_snapshot_dir: Path
+    cors_origins: tuple[str, ...]
 
 
 @lru_cache(maxsize=1)
@@ -52,6 +53,12 @@ def get_settings() -> Settings:
     if not snapshot_dir.is_absolute():
         snapshot_dir = backend_root / snapshot_dir
 
+    cors_origins = tuple(
+        origin.strip()
+        for origin in os.getenv("STOCKXPERT_CORS_ORIGINS", "").split(",")
+        if origin.strip()
+    )
+
     return Settings(
         app_name="StockXpert Backend",
         app_version="0.2.0",
@@ -66,4 +73,5 @@ def get_settings() -> Settings:
         market_index_symbol=os.getenv("STOCKXPERT_MARKET_INDEX", "^NSEI"),
         market_timezone=os.getenv("STOCKXPERT_MARKET_TIMEZONE", "Asia/Kolkata"),
         recommendations_snapshot_dir=snapshot_dir,
+        cors_origins=cors_origins,
     )

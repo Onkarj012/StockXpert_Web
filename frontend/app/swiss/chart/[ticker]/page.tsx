@@ -74,7 +74,7 @@ const PANELS = [
   { id: "macd", label: "MACD" },
 ];
 
-export default function ChartTerminalPage() {
+export default function ChartPage() {
   const params = useParams();
   const ticker = params.ticker as string;
   const c = useSwissTheme();
