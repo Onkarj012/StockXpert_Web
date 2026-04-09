@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.app.deps import get_service
-from backend.app.schemas import StockChartResponse, StockDeepDiveResponse
-from backend.app.services.backend_service import StockXpertBackendService
+from app.deps import get_service
+from app.schemas import StockChartResponse, StockDeepDiveResponse
+from app.services.backend_service import StockXpertBackendService
 
 router = APIRouter(prefix="/api/stocks", tags=["stocks"])
 

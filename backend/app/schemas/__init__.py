@@ -1,10 +1,12 @@
-from backend.app.schemas.api import (
+from app.schemas.api import (
     ArtifactContractResponse,
     ChartPoint,
     DashboardResponse,
     HealthResponse,
     MetadataConfigResponse,
     RecommendationCard,
+    RecommendationHorizonResponse,
+    RecommendationsByHorizonResponse,
     RecommendationsResponse,
     RootResponse,
     StockChartResponse,
@@ -18,6 +20,8 @@ __all__ = [
     "HealthResponse",
     "MetadataConfigResponse",
     "RecommendationCard",
+    "RecommendationHorizonResponse",
+    "RecommendationsByHorizonResponse",
     "RecommendationsResponse",
     "RootResponse",
     "StockChartResponse",

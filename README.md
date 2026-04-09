@@ -5,8 +5,8 @@
 ### Backend (FastAPI)
 
 ```bash
-pip install -r backend/requirements.txt
-uvicorn backend.app.main:app --reload
+pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
 
 ### Frontend (Next.js)
@@ -30,6 +30,12 @@ The safest production setup is:
 - host the backend on Railway or Render
 - set the frontend `BACKEND_URL` env var to your deployed backend URL
 - leave `NEXT_PUBLIC_API_BASE` empty so the browser uses same-origin `/api/*`
+
+The backend now serves recommendation traffic from a saved daily snapshot by
+default and refreshes that snapshot automatically before market open
+(`08:00` IST unless configured otherwise). If you deploy to an environment
+without persistent storage, attach a persistent volume or move the snapshot
+directory to shared storage so the snapshot survives restarts.
 
 That setup avoids browser CORS issues because Next.js proxies `/api/*` to the backend.
 

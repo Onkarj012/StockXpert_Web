@@ -6,6 +6,13 @@ from functools import lru_cache
 from pathlib import Path
 
 
+def _get_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str
@@ -21,6 +28,11 @@ class Settings:
     market_index_symbol: str
     market_timezone: str
     recommendations_snapshot_dir: Path
+    enable_live_recommendations: bool
+    snapshot_schedule_enabled: bool
+    snapshot_schedule_hour: int
+    snapshot_schedule_minute: int
+    max_stock_lookback_days: int
     cors_origins: tuple[str, ...]
 
 
@@ -73,5 +85,10 @@ def get_settings() -> Settings:
         market_index_symbol=os.getenv("STOCKXPERT_MARKET_INDEX", "^NSEI"),
         market_timezone=os.getenv("STOCKXPERT_MARKET_TIMEZONE", "Asia/Kolkata"),
         recommendations_snapshot_dir=snapshot_dir,
+        enable_live_recommendations=_get_bool("STOCKXPERT_ENABLE_LIVE_RECOMMENDATIONS", False),
+        snapshot_schedule_enabled=_get_bool("STOCKXPERT_SNAPSHOT_SCHEDULE_ENABLED", True),
+        snapshot_schedule_hour=int(os.getenv("STOCKXPERT_SNAPSHOT_SCHEDULE_HOUR", "8")),
+        snapshot_schedule_minute=int(os.getenv("STOCKXPERT_SNAPSHOT_SCHEDULE_MINUTE", "0")),
+        max_stock_lookback_days=int(os.getenv("STOCKXPERT_MAX_STOCK_LOOKBACK_DAYS", "365")),
         cors_origins=cors_origins,
     )

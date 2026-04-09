@@ -13,6 +13,13 @@ export default function SwissStatus() {
   const c = useSwissTheme();
 
   const isOk = health?.status === "ok";
+  const snapshotStatus = health?.snapshot?.status ?? "missing";
+  const snapshotColor =
+    snapshotStatus === "current"
+      ? c.accentCyan
+      : snapshotStatus === "stale"
+        ? c.textPrimary
+        : c.accentRed;
 
   return (
     <div className="py-12">
@@ -50,12 +57,32 @@ export default function SwissStatus() {
               { l: "Generated", v: health?.generated_at ? formatDateTime(health.generated_at) : "—" },
               { l: "Supported Symbols", v: `${health?.supported_symbols ?? 86}` },
               { l: "Model Version", v: health?.model_version?.split(":")[0] },
+              { l: "Snapshot", v: snapshotStatus.toUpperCase(), col: snapshotColor },
             ].map(({ l, v, col }) => (
               <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${c.borderSubtle}`, fontFamily: HV }}>
                 <div style={{ fontSize: "12px", color: c.textSecondary, textTransform: "uppercase", letterSpacing: "0.05em" }}>{l}</div>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: col ?? c.textPrimary }}>{v ?? "—"}</div>
               </div>
             ))}
+
+            {health?.snapshot && (
+              <>
+                <div style={{ marginTop: "24px", fontFamily: HV, fontSize: "11px", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: c.textPrimary, marginBottom: "8px", borderBottom: `1px solid ${c.textPrimary}`, paddingBottom: "4px" }}>
+                  Snapshot Freshness
+                </div>
+                {[
+                  { l: "Market Date", v: health.snapshot.market_date ?? "—" },
+                  { l: "Snapshot Time", v: health.snapshot.generated_at ? formatDateTime(health.snapshot.generated_at) : "—" },
+                  { l: "Current Day", v: health.snapshot.is_today ? "YES" : "NO" },
+                  { l: "Cache File", v: health.snapshot.path?.split("/").pop() ?? "—" },
+                ].map(({ l, v }) => (
+                  <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${c.borderSubtle}`, fontFamily: HV }}>
+                    <div style={{ fontSize: "11px", color: c.textSecondary, textTransform: "capitalize" }}>{l}</div>
+                    <div style={{ fontSize: "11px", color: c.textPrimary, textAlign: "right", maxWidth: "220px", wordBreak: "break-word" }}>{v}</div>
+                  </div>
+                ))}
+              </>
+            )}
 
             <div style={{ marginTop: "24px", fontFamily: HV, fontSize: "11px", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: c.textPrimary, marginBottom: "8px", borderBottom: `1px solid ${c.textPrimary}`, paddingBottom: "4px" }}>
               Cache Stats

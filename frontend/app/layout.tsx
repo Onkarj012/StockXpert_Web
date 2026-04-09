@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { StockxpertDataProvider } from "@/lib/api/provider";
 
 export const metadata: Metadata = {
   title: "StockXpert — AI Stock Intelligence",
@@ -32,7 +33,9 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <StockxpertDataProvider>{children}</StockxpertDataProvider>
+      </body>
     </html>
   );
 }

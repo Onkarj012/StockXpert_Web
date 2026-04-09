@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.app.core.settings import get_settings
-from backend.app.deps import get_service
-from backend.app.schemas import DashboardResponse
-from backend.app.services.backend_service import StockXpertBackendService
+from app.core.errors import DataUnavailableError, OperationNotAllowedError
+from app.core.settings import get_settings
+from app.deps import get_service
+from app.schemas import DashboardResponse
+from app.services.backend_service import StockXpertBackendService
 
 router = APIRouter(prefix="/api", tags=["dashboard"])
 
@@ -18,8 +19,13 @@ def dashboard(
     service: StockXpertBackendService = Depends(get_service),
 ) -> DashboardResponse:
     settings = get_settings()
-    return service.get_dashboard(
-        symbols=[value.strip() for value in symbols.split(",")] if symbols else None,
-        horizon=horizon or settings.default_horizon,
-        top_n=top_n or settings.default_top_n,
-    )
+    try:
+        return service.get_dashboard(
+            symbols=[value.strip() for value in symbols.split(",")] if symbols else None,
+            horizon=horizon or settings.default_horizon,
+            top_n=top_n or settings.default_top_n,
+        )
+    except DataUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except OperationNotAllowedError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc

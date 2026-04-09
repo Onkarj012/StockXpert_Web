@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 import torch
 
-from backend.app.core.errors import DataUnavailableError
-from backend.app.engine.checkpoint_loader import RuntimeBundle
+from app.core.errors import DataUnavailableError
+from app.engine.checkpoint_loader import RuntimeBundle
 
 SYMBOL_SECTORS: dict[str, str] = {
     "RELIANCE.NS": "Energy",

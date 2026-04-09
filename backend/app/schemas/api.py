@@ -39,6 +39,7 @@ class HealthResponse(APIModel):
     cache: dict[str, Any]
     supported_symbols: int | None = None
     last_runs: dict[str, str]
+    snapshot: dict[str, Any]
 
 
 class MetadataConfigResponse(APIModel):
@@ -74,6 +75,26 @@ class RecommendationsResponse(APIModel):
     stocks_scanned: dict[str, int]
     count: int
     cards: list[RecommendationCard]
+
+
+class RecommendationHorizonResponse(APIModel):
+    horizon: int
+    generated_at: str
+    model_version: str
+    config_used: str
+    sources: list[str]
+    stocks_scanned: dict[str, int]
+    count: int
+    cards: list[RecommendationCard]
+
+
+class RecommendationsByHorizonResponse(APIModel):
+    generated_at: str
+    market_date: str
+    model_version: str
+    config_used: str
+    horizons: list[int]
+    recommendations_by_horizon: dict[str, RecommendationHorizonResponse]
 
 
 class DashboardResponse(APIModel):

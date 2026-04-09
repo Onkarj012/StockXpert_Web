@@ -15,6 +15,7 @@
 
 # production
 /frontend/build
+/backend/artifacts/cache/
 
 # misc
 .DS_Store

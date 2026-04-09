@@ -1,6 +1,20 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/editorial",
+        destination: "/swiss",
+        permanent: false,
+      },
+      {
+        source: "/editorial/:path*",
+        destination: "/swiss/:path*",
+        permanent: false,
+      },
+    ];
+  },
   async rewrites() {
     const backendUrl =
       process.env.BACKEND_URL ||

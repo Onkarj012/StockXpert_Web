@@ -15,3 +15,7 @@ class InvalidSymbolError(BackendError):
 
 class DataUnavailableError(BackendError):
     """Raised when market data cannot be fetched or prepared for inference."""
+
+
+class OperationNotAllowedError(BackendError):
+    """Raised when a requested backend action is disabled by configuration."""
