@@ -60,11 +60,25 @@ Inputs:
 - `horizon` optional trading-day horizon
 - `top_n` optional recommendation limit
 - `side` one of `long`, `short`, `both`
-- `live` optional boolean. If `true`, bypasses saved snapshot and runs live inference.
+- `live` optional boolean. If `true`, attempts live inference, but only when
+  live recompute is enabled by backend configuration.
 
 Returns ranked ML recommendation cards.
 
-By default this endpoint serves from the latest saved daily snapshot (today first, then live fallback).
+By default this endpoint serves from the latest saved daily snapshot (today
+first, then latest previous snapshot). It does not recompute live on normal
+user traffic.
+
+### `GET /api/recommendations/horizons`
+Inputs:
+
+- `symbols` optional comma-separated subset of trained symbols
+- `top_n` optional recommendation limit
+- `side` one of `long`, `short`, `both`
+- `live` optional boolean. Same config gate as `/api/recommendations`
+
+Returns all supported horizons from the saved snapshot in one payload. The
+frontend horizons page uses this endpoint to avoid five separate requests.
 
 ### `GET /api/stocks/{ticker}`
 Returns current price, multi-horizon predictions, key indicators, support/resistance, and chart-ready history.
@@ -75,9 +89,9 @@ Returns OHLCV points plus overlays for chart rendering.
 ## Run Locally
 
 1. Install backend dependencies:
-   `pip install -r backend/requirements.txt`
+   `pip install -r requirements.txt`
 2. Start the API:
-   `uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload`
+   `uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`
 3. Open docs:
    `http://127.0.0.1:8000/docs`
 
@@ -85,7 +99,7 @@ Returns OHLCV points plus overlays for chart rendering.
 
 Build recommendations for all trained symbols and horizons (1/3/5/7/10), then save to a local JSON snapshot:
 
-`python -m backend.app.jobs.build_recommendation_snapshot`
+`python -m app.jobs.build_recommendation_snapshot`
 
 Default snapshot location:
 
@@ -93,9 +107,19 @@ Default snapshot location:
 
 Recommended schedule:
 
-- run once after market close (or early morning before frontend traffic)
+- the backend includes a built-in scheduler and refreshes the snapshot before
+  market open by default (`08:00` IST)
+- the manual job below remains available for one-off rebuilds and verification
 - frontend calls `/api/recommendations` as usual and receives saved data
-- use `?live=true` only for debugging/recompute checks
+- if today's snapshot is missing, the API serves the latest saved snapshot and
+  reports stale freshness in `/api/health`
+- stock detail and chart payloads are computed once per symbol each day with
+  the maximum supported lookback, then sliced on read for 30/60/90/180/365-day
+  views
+- use `?live=true` only for debugging/recompute checks, and only when live
+  recompute is explicitly enabled
+- if your platform does not preserve local disk across restarts, move the
+  snapshot directory to shared storage or attach a persistent volume
 
 ## Environment Variables
 
@@ -119,14 +143,24 @@ Recommended schedule:
   Market timezone used in timestamps. Default: `Asia/Kolkata`
 - `STOCKXPERT_RECOMMENDATIONS_SNAPSHOT_DIR`
   Directory for saved recommendation snapshots. Default: `backend/artifacts/cache`
+- `STOCKXPERT_ENABLE_LIVE_RECOMMENDATIONS`
+  Allow `?live=true` to run model inference on demand. Default: `false`
+- `STOCKXPERT_SNAPSHOT_SCHEDULE_ENABLED`
+  Enable the built-in daily snapshot scheduler. Default: `true`
+- `STOCKXPERT_SNAPSHOT_SCHEDULE_HOUR`
+  IST hour for the automatic daily snapshot refresh. Default: `8`
+- `STOCKXPERT_SNAPSHOT_SCHEDULE_MINUTE`
+  IST minute for the automatic daily snapshot refresh. Default: `0`
+- `STOCKXPERT_MAX_STOCK_LOOKBACK_DAYS`
+  Canonical stock detail/chart cache size. Default: `365`
 
 ## Moving `backend/` To A New Repo
 
 1. Copy the entire `backend/` folder.
 2. Keep or replace `backend/artifacts/default_bundle`.
 3. Update `backend/artifacts/model_manifest.json` if you swap in a different checkpoint bundle.
-4. Install dependencies from `backend/requirements.txt`.
-5. Start with `uvicorn backend.app.main:app --reload`.
+4. Install dependencies from `requirements.txt`.
+5. Start with `uvicorn app.main:app --reload`.
 
 No runtime dependency on the original repo should remain.
 

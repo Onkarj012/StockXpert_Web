@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from backend.app.core.artifacts import ArtifactRegistry
-from backend.app.core.cache import TTLCache
-from backend.app.core.settings import get_settings
-from backend.app.services.backend_service import StockXpertBackendService
+from app.core.artifacts import ArtifactRegistry
+from app.core.cache import TTLCache
+from app.core.settings import get_settings
+from app.services.backend_service import StockXpertBackendService
 
 
 def main() -> None:

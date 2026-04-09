@@ -86,6 +86,19 @@ export interface RecommendationsResponse {
   cards: RecommendationCard[];
 }
 
+export interface RecommendationHorizonResponse extends RecommendationsResponse {
+  horizon: number;
+}
+
+export interface RecommendationsByHorizonResponse {
+  generated_at: string;
+  market_date: string;
+  model_version: string;
+  config_used: string;
+  horizons: number[];
+  recommendations_by_horizon: Record<string, RecommendationHorizonResponse>;
+}
+
 export interface PredictionEntry {
   direction: string;
   confidence_pct: number;
@@ -136,6 +149,13 @@ export interface HealthResponse {
   cache: Record<string, unknown>;
   supported_symbols?: number;
   last_runs: Record<string, string>;
+  snapshot: {
+    status: "current" | "stale" | "missing";
+    market_date?: string | null;
+    generated_at?: string | null;
+    path?: string | null;
+    is_today?: boolean;
+  };
 }
 
 export interface ArtifactContract {

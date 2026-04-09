@@ -8,16 +8,16 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
-from backend.app.core.errors import DataUnavailableError
-from backend.app.core.settings import Settings
-from backend.app.engine.checkpoint_loader import RuntimeBundle
-from backend.app.engine.data.csv_sentiment import CSVSentimentClient
-from backend.app.engine.data.market_data import YFinanceMarketDataProvider
-from backend.app.engine.data.sentiment import merge_sentiment_with_prices
-from backend.app.engine.data.trading_calendar import TradingCalendar
-from backend.app.engine.predictor import BackendPredictor
-from backend.app.engine.ranking import filter_side, sort_cards
-from backend.app.core.cache import TTLCache
+from app.core.errors import DataUnavailableError
+from app.core.settings import Settings
+from app.engine.checkpoint_loader import RuntimeBundle
+from app.engine.data.csv_sentiment import CSVSentimentClient
+from app.engine.data.market_data import YFinanceMarketDataProvider
+from app.engine.data.sentiment import merge_sentiment_with_prices
+from app.engine.data.trading_calendar import TradingCalendar
+from app.engine.predictor import BackendPredictor
+from app.engine.ranking import filter_side, sort_cards
+from app.core.cache import TTLCache
 
 
 @dataclass
@@ -38,7 +38,13 @@ class InferencePipeline:
         self.market_data = YFinanceMarketDataProvider()
         self.predictor = BackendPredictor(runtime)
         self._feature_cache: TTLCache = TTLCache()
-        self._cache_ttl = 300
+        self._result_cache: TTLCache = TTLCache()
+        self._cache_ttl = max(6 * 3600, settings.off_market_ttl_seconds)
+        self._daily_cache_ttl = 24 * 3600
+
+    def _market_date_key(self, prefix: str) -> str:
+        date_key = datetime.now(ZoneInfo(self.settings.market_timezone)).date().isoformat()
+        return f"{prefix}:{date_key}"
 
     def _attach_sentiment(self, price_map: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
         def with_defaults() -> dict[str, pd.DataFrame]:
@@ -202,12 +208,19 @@ class InferencePipeline:
         }
 
     def market_regime(self) -> dict:
+        cache_key = self._market_date_key("market_regime")
+        cached = self._result_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         df = yf.download(self.settings.market_index_symbol, period="6mo", interval="1d", auto_adjust=True, progress=False)
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
         close = df["Close"].dropna()
         if close.empty:
-            return {"regime": "Unknown"}
+            payload = {"regime": "Unknown"}
+            self._result_cache.set(cache_key, payload, self._daily_cache_ttl)
+            return payload
         sma20 = close.rolling(20).mean().iloc[-1]
         sma50 = close.rolling(50).mean().iloc[-1]
         last = close.iloc[-1]
@@ -217,23 +230,34 @@ class InferencePipeline:
             regime = "Bear"
         else:
             regime = "Sideways"
-        return {
+        payload = {
             "regime": regime,
             "index_close": float(last),
             "sma20": float(sma20),
             "sma50": float(sma50),
             "as_of": close.index[-1].isoformat(),
         }
+        self._result_cache.set(cache_key, payload, self._daily_cache_ttl)
+        return payload
 
     def aggregate_sentiment(self) -> dict:
+        cache_key = self._market_date_key("aggregate_sentiment")
+        cached = self._result_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         if self.settings.stockxpert_sentiment_csv is None or not self.settings.stockxpert_sentiment_csv.exists():
-            return {"value": 0.0, "backend": "none", "articles": 0}
+            payload = {"value": 0.0, "backend": "none", "articles": 0}
+            self._result_cache.set(cache_key, payload, self._daily_cache_ttl)
+            return payload
         df = pd.read_csv(self.settings.stockxpert_sentiment_csv)
         if "sentiment_score" not in df.columns:
             if "Sentiment" in df.columns:
                 df["sentiment_score"] = df["Sentiment"].map({"Positive": 1.0, "Neutral": 0.0, "Negative": -1.0})
             else:
-                return {"value": 0.0, "backend": "csv", "articles": 0}
+                payload = {"value": 0.0, "backend": "csv", "articles": 0}
+                self._result_cache.set(cache_key, payload, self._daily_cache_ttl)
+                return payload
         date_column = next((column for column in ("Publish Date", "date", "datetime") if column in df.columns), None)
         if date_column:
             df[date_column] = pd.to_datetime(df[date_column], errors="coerce")
@@ -241,12 +265,16 @@ class InferencePipeline:
         else:
             recent = df
         if recent.empty:
-            return {"value": 0.0, "backend": "csv", "articles": 0}
-        return {
+            payload = {"value": 0.0, "backend": "csv", "articles": 0}
+            self._result_cache.set(cache_key, payload, self._daily_cache_ttl)
+            return payload
+        payload = {
             "value": float(pd.to_numeric(recent["sentiment_score"], errors="coerce").fillna(0.0).mean()),
             "backend": "csv",
             "articles": int(len(recent)),
         }
+        self._result_cache.set(cache_key, payload, self._daily_cache_ttl)
+        return payload
 
     def _chart_points(self, frame: pd.DataFrame, include_overlays: bool) -> list[dict]:
         points = []

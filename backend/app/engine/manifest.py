@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from backend.app.core.errors import ArtifactError
+from app.core.errors import ArtifactError
 
 
 @dataclass(frozen=True)

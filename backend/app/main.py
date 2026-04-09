@@ -6,17 +6,18 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.core.artifacts import ArtifactRegistry
-from backend.app.core.cache import TTLCache
-from backend.app.core.logging import configure_logging
-from backend.app.core.settings import get_settings
-from backend.app.routers.dashboard import router as dashboard_router
-from backend.app.routers.health import router as health_router
-from backend.app.routers.metadata import router as metadata_router
-from backend.app.routers.recommendations import router as recommendations_router
-from backend.app.routers.stocks import router as stocks_router
-from backend.app.schemas import RootResponse
-from backend.app.services.backend_service import StockXpertBackendService
+from app.core.artifacts import ArtifactRegistry
+from app.core.cache import TTLCache
+from app.core.logging import configure_logging
+from app.core.settings import get_settings
+from app.routers.dashboard import router as dashboard_router
+from app.routers.health import router as health_router
+from app.routers.metadata import router as metadata_router
+from app.routers.recommendations import router as recommendations_router
+from app.routers.stocks import router as stocks_router
+from app.schemas import RootResponse
+from app.services.backend_service import StockXpertBackendService
+from app.services.snapshot_scheduler import SnapshotScheduler
 
 configure_logging()
 logger = logging.getLogger("stockxpert.backend")
@@ -29,9 +30,21 @@ async def lifespan(app: FastAPI):
     artifacts = ArtifactRegistry(settings)
     cache = TTLCache()
     service = StockXpertBackendService(settings=settings, artifacts=artifacts, cache=cache)
+    scheduler = None
+    if settings.snapshot_schedule_enabled:
+        scheduler = SnapshotScheduler(
+            service,
+            timezone=settings.market_timezone,
+            hour=settings.snapshot_schedule_hour,
+            minute=settings.snapshot_schedule_minute,
+        )
+        scheduler.start()
     app.state.backend_service = service
+    app.state.snapshot_scheduler = scheduler
     logger.info("Backend started with bundle dir: %s", artifacts.paths.bundle_dir)
     yield
+    if scheduler is not None:
+        scheduler.stop()
 
 
 app = FastAPI(

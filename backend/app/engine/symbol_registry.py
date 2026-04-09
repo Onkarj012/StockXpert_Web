@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from backend.app.core.errors import InvalidSymbolError
+from app.core.errors import InvalidSymbolError
 
 
 class SymbolRegistry:

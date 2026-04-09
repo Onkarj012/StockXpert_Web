@@ -6,16 +6,16 @@ from typing import TYPE_CHECKING
 
 import torch
 
-from backend.app.core.errors import ArtifactError
-from backend.app.engine.calibration.calibration import PredictionCalibrator
-from backend.app.engine.features.builder import FeatureBuilder
-from backend.app.engine.manifest import ModelManifest
-from backend.app.engine.models.stockxpert import StockXpertModel
-from backend.app.engine.scaling.scaling import ScalerGroup
-from backend.app.engine.symbol_registry import SymbolRegistry
+from app.core.errors import ArtifactError
+from app.engine.calibration.calibration import PredictionCalibrator
+from app.engine.features.builder import FeatureBuilder
+from app.engine.manifest import ModelManifest
+from app.engine.models.stockxpert import StockXpertModel
+from app.engine.scaling.scaling import ScalerGroup
+from app.engine.symbol_registry import SymbolRegistry
 
 if TYPE_CHECKING:
-    from backend.app.core.artifacts import ArtifactPaths
+    from app.core.artifacts import ArtifactPaths
 
 
 @dataclass

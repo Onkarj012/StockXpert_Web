@@ -6,10 +6,10 @@ from typing import Any
 
 import torch
 
-from backend.app.core.errors import ArtifactError
-from backend.app.core.settings import Settings
-from backend.app.engine.checkpoint_loader import load_runtime_bundle
-from backend.app.engine.manifest import load_manifest
+from app.core.errors import ArtifactError
+from app.core.settings import Settings
+from app.engine.checkpoint_loader import load_runtime_bundle
+from app.engine.manifest import load_manifest
 
 
 @dataclass
@@ -28,6 +28,7 @@ class ArtifactRegistry:
         self.manifest = load_manifest(settings.manifest_path)
         self.paths = self._resolve_paths()
         self.runtime = load_runtime_bundle(self.manifest, self.paths)
+        self._checkpoint_meta = self._load_checkpoint_meta()
 
     def _resolve_paths(self) -> ArtifactPaths:
         bundle_dir = self.settings.bundle_dir
@@ -53,7 +54,7 @@ class ArtifactRegistry:
             run_config=run_config,
         )
 
-    def checkpoint_meta(self) -> dict[str, Any]:
+    def _load_checkpoint_meta(self) -> dict[str, Any]:
         ckpt = torch.load(self.paths.checkpoint, map_location="cpu")
         state = ckpt.get("model_state_dict", {})
         emb = state.get("stock_embedding.weight")
@@ -71,6 +72,9 @@ class ArtifactRegistry:
             "mid_gru_ih_shape": list(mid_ih.shape) if mid_ih is not None else None,
             "long_lstm_ih_shape": list(long_ih.shape) if long_ih is not None else None,
         }
+
+    def checkpoint_meta(self) -> dict[str, Any]:
+        return dict(self._checkpoint_meta)
 
     def model_version(self) -> str:
         return self.manifest.model_version
