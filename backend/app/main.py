@@ -35,6 +35,7 @@ async def lifespan(app: FastAPI):
         scheduler = SnapshotScheduler(
             service,
             timezone=settings.market_timezone,
+            catch_up_on_startup=settings.snapshot_catch_up_on_startup,
             hour=settings.snapshot_schedule_hour,
             minute=settings.snapshot_schedule_minute,
         )

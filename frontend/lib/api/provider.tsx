@@ -8,7 +8,10 @@ export function StockxpertDataProvider({ children }: PropsWithChildren) {
     <SWRConfig
       value={{
         dedupingInterval: 30_000,
+        errorRetryCount: 1,
+        keepPreviousData: true,
         revalidateOnFocus: false,
+        revalidateIfStale: false,
         shouldRetryOnError: false,
         onError: (error) => {
           if ((error as Error).name === "AbortError") return;

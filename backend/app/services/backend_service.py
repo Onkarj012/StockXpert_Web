@@ -31,7 +31,7 @@ class StockXpertBackendService:
         self.settings = settings
         self.artifacts = artifacts
         self.cache = cache
-        self.pipeline = InferencePipeline(artifacts.runtime, settings)
+        self._pipeline: InferencePipeline | None = None
         self._last_runs: dict[str, str] = {}
         self.snapshot_store = RecommendationSnapshotStore(
             root_dir=settings.recommendations_snapshot_dir,
@@ -48,6 +48,12 @@ class StockXpertBackendService:
             prefix="chart",
         )
         self._canonical_stock_lookback = max(60, settings.max_stock_lookback_days)
+
+    @property
+    def pipeline(self) -> InferencePipeline:
+        if self._pipeline is None:
+            self._pipeline = InferencePipeline(self.artifacts.runtime, self.settings)
+        return self._pipeline
 
     def _ttl(self) -> int:
         return market_aware_ttl(self.settings.market_ttl_seconds, self.settings.off_market_ttl_seconds)
@@ -120,7 +126,6 @@ class StockXpertBackendService:
 
     def health(self) -> dict[str, Any]:
         artifacts = self.artifacts.describe()
-        artifacts["checkpoint_meta"] = self.artifacts.checkpoint_meta()
         snapshot = self.snapshot_freshness()
         return {
             "status": "ok" if snapshot["status"] != "missing" else "degraded",
@@ -128,7 +133,7 @@ class StockXpertBackendService:
             "model_version": self.artifacts.model_version(),
             "artifacts": artifacts,
             "cache": self.cache.stats(),
-            "supported_symbols": len(self.artifacts.runtime.symbol_registry.symbols),
+            "supported_symbols": len(self.artifacts.manifest.trained_symbols),
             "last_runs": self._last_runs,
             "snapshot": snapshot,
         }

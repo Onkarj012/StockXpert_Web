@@ -16,11 +16,13 @@ class SnapshotScheduler:
         service: StockXpertBackendService,
         *,
         timezone: str,
+        catch_up_on_startup: bool,
         hour: int,
         minute: int,
     ) -> None:
         self.service = service
         self.timezone = timezone
+        self.catch_up_on_startup = catch_up_on_startup
         self.hour = hour
         self.minute = minute
         self._stop_event = Event()
@@ -39,7 +41,8 @@ class SnapshotScheduler:
             self._thread.join(timeout=2)
 
     def _run_loop(self) -> None:
-        self._run_catch_up_if_needed()
+        if self.catch_up_on_startup:
+            self._run_catch_up_if_needed()
         while not self._stop_event.is_set():
             now = datetime.now(ZoneInfo(self.timezone))
             next_run = self._next_run_after(now)

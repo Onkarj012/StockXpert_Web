@@ -30,6 +30,7 @@ class Settings:
     recommendations_snapshot_dir: Path
     enable_live_recommendations: bool
     snapshot_schedule_enabled: bool
+    snapshot_catch_up_on_startup: bool
     snapshot_schedule_hour: int
     snapshot_schedule_minute: int
     max_stock_lookback_days: int
@@ -87,6 +88,7 @@ def get_settings() -> Settings:
         recommendations_snapshot_dir=snapshot_dir,
         enable_live_recommendations=_get_bool("STOCKXPERT_ENABLE_LIVE_RECOMMENDATIONS", False),
         snapshot_schedule_enabled=_get_bool("STOCKXPERT_SNAPSHOT_SCHEDULE_ENABLED", True),
+        snapshot_catch_up_on_startup=_get_bool("STOCKXPERT_SNAPSHOT_CATCH_UP_ON_STARTUP", False),
         snapshot_schedule_hour=int(os.getenv("STOCKXPERT_SNAPSHOT_SCHEDULE_HOUR", "8")),
         snapshot_schedule_minute=int(os.getenv("STOCKXPERT_SNAPSHOT_SCHEDULE_MINUTE", "0")),
         max_stock_lookback_days=int(os.getenv("STOCKXPERT_MAX_STOCK_LOOKBACK_DAYS", "365")),

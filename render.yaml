@@ -1,7 +1,11 @@
 services:
   - type: web
     name: stockxpert-backend
+    rootDir: backend
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
+    envVars:
+      - key: STOCKXPERT_SNAPSHOT_CATCH_UP_ON_STARTUP
+        value: "false"

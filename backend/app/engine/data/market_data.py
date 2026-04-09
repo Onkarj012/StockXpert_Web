@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pandas as pd
 import yfinance as yf
@@ -11,6 +12,16 @@ from app.core.errors import DataUnavailableError
 class YFinanceMarketDataProvider:
     def __init__(self, chunk_size: int = 20) -> None:
         self.chunk_size = chunk_size
+        self._configure_tz_cache()
+
+    def _configure_tz_cache(self) -> None:
+        cache_dir = Path("/tmp/py-yfinance")
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            yf.set_tz_cache_location(str(cache_dir))
+        except Exception:
+            # Best-effort only. Market data requests can still proceed without it.
+            pass
 
     def _normalize_frame(self, frame: pd.DataFrame) -> pd.DataFrame:
         if isinstance(frame.columns, pd.MultiIndex):

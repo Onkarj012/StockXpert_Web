@@ -27,8 +27,8 @@ class ArtifactRegistry:
         self.settings = settings
         self.manifest = load_manifest(settings.manifest_path)
         self.paths = self._resolve_paths()
-        self.runtime = load_runtime_bundle(self.manifest, self.paths)
-        self._checkpoint_meta = self._load_checkpoint_meta()
+        self._runtime = None
+        self._checkpoint_meta = None
 
     def _resolve_paths(self) -> ArtifactPaths:
         bundle_dir = self.settings.bundle_dir
@@ -73,7 +73,15 @@ class ArtifactRegistry:
             "long_lstm_ih_shape": list(long_ih.shape) if long_ih is not None else None,
         }
 
+    @property
+    def runtime(self):
+        if self._runtime is None:
+            self._runtime = load_runtime_bundle(self.manifest, self.paths)
+        return self._runtime
+
     def checkpoint_meta(self) -> dict[str, Any]:
+        if self._checkpoint_meta is None:
+            self._checkpoint_meta = self._load_checkpoint_meta()
         return dict(self._checkpoint_meta)
 
     def model_version(self) -> str:
