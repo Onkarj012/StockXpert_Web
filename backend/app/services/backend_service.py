@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime
+from threading import Lock
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -48,6 +49,7 @@ class StockXpertBackendService:
             prefix="chart",
         )
         self._canonical_stock_lookback = max(60, settings.max_stock_lookback_days)
+        self._snapshot_build_lock = Lock()
 
     @property
     def pipeline(self) -> InferencePipeline:
@@ -82,6 +84,9 @@ class StockXpertBackendService:
                 "No saved recommendation snapshot is available. Run the daily snapshot builder before serving traffic."
             )
         return snapshot
+
+    def _should_fallback_live_on_missing_snapshot(self, error: DataUnavailableError) -> bool:
+        return self.settings.fallback_to_live_when_snapshot_missing and "No saved recommendation snapshot" in str(error)
 
     def snapshot_freshness(self) -> dict[str, Any]:
         return self.snapshot_store.describe_freshness()
@@ -155,19 +160,24 @@ class StockXpertBackendService:
     ) -> dict[str, Any]:
         validated_symbols = self._symbols_or_default(symbols)
         if prefer_saved and not force_live:
-            snapshot = self._get_snapshot_or_raise()
-            from_snapshot = response_from_snapshot(
-                snapshot,
-                horizon=horizon,
-                side=side,
-                top_n=top_n,
-                symbols=validated_symbols,
-            )
-            if from_snapshot is None:
-                raise DataUnavailableError(f"Horizon {horizon} is unavailable in the saved snapshot.")
-            return from_snapshot
+            try:
+                snapshot = self._get_snapshot_or_raise()
+                from_snapshot = response_from_snapshot(
+                    snapshot,
+                    horizon=horizon,
+                    side=side,
+                    top_n=top_n,
+                    symbols=validated_symbols,
+                )
+                if from_snapshot is None:
+                    raise DataUnavailableError(f"Horizon {horizon} is unavailable in the saved snapshot.")
+                return from_snapshot
+            except DataUnavailableError as exc:
+                if not self._should_fallback_live_on_missing_snapshot(exc):
+                    raise
+                force_live = True
 
-        if not self.settings.enable_live_recommendations:
+        if not force_live and not self.settings.enable_live_recommendations:
             raise OperationNotAllowedError(
                 "Live recommendation recompute is disabled. Use the saved daily snapshot instead."
             )
@@ -194,16 +204,21 @@ class StockXpertBackendService:
         horizons = [int(value) for value in self.artifacts.runtime.manifest.horizons]
 
         if prefer_saved and not force_live:
-            snapshot = self._get_snapshot_or_raise()
-            return response_all_horizons_from_snapshot(
-                snapshot,
-                horizons=horizons,
-                side=side,
-                top_n=top_n,
-                symbols=validated_symbols,
-            )
+            try:
+                snapshot = self._get_snapshot_or_raise()
+                return response_all_horizons_from_snapshot(
+                    snapshot,
+                    horizons=horizons,
+                    side=side,
+                    top_n=top_n,
+                    symbols=validated_symbols,
+                )
+            except DataUnavailableError as exc:
+                if not self._should_fallback_live_on_missing_snapshot(exc):
+                    raise
+                force_live = True
 
-        if not self.settings.enable_live_recommendations:
+        if not force_live and not self.settings.enable_live_recommendations:
             raise OperationNotAllowedError(
                 "Live recommendation recompute is disabled. Use the saved daily snapshot instead."
             )
@@ -227,28 +242,33 @@ class StockXpertBackendService:
         return payload
 
     def build_recommendation_snapshot(self, horizons: tuple[int, ...] = DEFAULT_HORIZONS) -> dict[str, Any]:
-        symbols = self._symbols_or_default(None)
-        now = datetime.now(ZoneInfo(self.settings.market_timezone))
-        context = self.pipeline.run(symbols)
-        payload = self._recommendations_by_horizon_payload(
-            context.predictions,
-            symbols=symbols,
-            horizons=[int(value) for value in horizons],
-            top_n=len(symbols),
-            side="both",
-            generated_at=now.isoformat(),
-        )
-        snapshot_payload = build_snapshot_payload(
-            generated_at=payload["generated_at"],
-            market_date=payload["market_date"],
-            model_version=payload["model_version"],
-            config_used=payload["config_used"],
-            horizons=payload["horizons"],
-            recommendations_by_horizon=payload["recommendations_by_horizon"],
-        )
-        snapshot_path = self.snapshot_store.write_today(snapshot_payload)
-        self._mark_run("recommendations_snapshot")
-        return {"path": str(snapshot_path), "market_date": snapshot_payload["market_date"], "horizons": list(horizons)}
+        with self._snapshot_build_lock:
+            symbols = self._symbols_or_default(None)
+            now = datetime.now(ZoneInfo(self.settings.market_timezone))
+            context = self.pipeline.run(symbols)
+            payload = self._recommendations_by_horizon_payload(
+                context.predictions,
+                symbols=symbols,
+                horizons=[int(value) for value in horizons],
+                top_n=len(symbols),
+                side="both",
+                generated_at=now.isoformat(),
+            )
+            snapshot_payload = build_snapshot_payload(
+                generated_at=payload["generated_at"],
+                market_date=payload["market_date"],
+                model_version=payload["model_version"],
+                config_used=payload["config_used"],
+                horizons=payload["horizons"],
+                recommendations_by_horizon=payload["recommendations_by_horizon"],
+            )
+            snapshot_path = self.snapshot_store.write_today(snapshot_payload)
+            self._mark_run("recommendations_snapshot")
+            return {
+                "path": str(snapshot_path),
+                "market_date": snapshot_payload["market_date"],
+                "horizons": list(horizons),
+            }
 
     def get_dashboard(self, symbols: list[str] | None, horizon: int, top_n: int) -> dict[str, Any]:
         validated_symbols = self._symbols_or_default(symbols)
