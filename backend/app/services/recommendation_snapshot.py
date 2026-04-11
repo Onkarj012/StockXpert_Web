@@ -8,6 +8,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from app.engine.ranking import filter_side, sort_cards
+from app.services.snapshot_storage import SnapshotRecord, SnapshotStorage
 
 
 DEFAULT_HORIZONS: tuple[int, ...] = (1, 3, 5, 7, 10)
@@ -15,40 +16,35 @@ DEFAULT_HORIZONS: tuple[int, ...] = (1, 3, 5, 7, 10)
 
 @dataclass
 class RecommendationSnapshotStore:
-    root_dir: Path
+    storage: SnapshotStorage
     timezone: str
 
     def _today_key(self) -> str:
         return datetime.now(ZoneInfo(self.timezone)).date().isoformat()
 
-    def _path_for_date(self, date_key: str) -> Path:
-        return self.root_dir / f"recommendations_{date_key}.json"
-
-    def latest_path(self) -> Path | None:
-        if not self.root_dir.exists():
-            return None
-        matches = sorted(self.root_dir.glob("recommendations_*.json"))
-        return matches[-1] if matches else None
+    def _record_for_today(self) -> SnapshotRecord | None:
+        return self.storage.read_for_date(self._today_key())
 
     def read_latest(self) -> dict | None:
-        path = self.latest_path()
-        if path is None:
+        record = self.storage.read_latest()
+        if record is None:
             return None
-        return json.loads(path.read_text(encoding="utf-8"))
+        return record.payload
 
     def read_for_today(self) -> dict | None:
-        path = self._path_for_date(self._today_key())
-        if not path.exists():
+        record = self._record_for_today()
+        if record is None:
             return None
-        return json.loads(path.read_text(encoding="utf-8"))
+        return record.payload
 
     def read_preferred(self) -> dict | None:
         return self.read_for_today() or self.read_latest()
 
     def describe_freshness(self) -> dict[str, Any]:
-        today_path = self._path_for_date(self._today_key())
-        path = today_path if today_path.exists() else self.latest_path()
-        if path is None:
+        record = self._record_for_today()
+        if record is None:
+            record = self.storage.read_latest()
+        if record is None:
             return {
                 "status": "missing",
                 "market_date": None,
@@ -57,23 +53,18 @@ class RecommendationSnapshotStore:
                 "is_today": False,
             }
 
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = record.payload
         market_date = payload.get("market_date")
         return {
-            "status": "current" if path == today_path else "stale",
+            "status": "current" if market_date == self._today_key() else "stale",
             "market_date": market_date,
             "generated_at": payload.get("generated_at"),
-            "path": str(path),
+            "path": record.storage_key,
             "is_today": market_date == self._today_key(),
         }
 
-    def write_today(self, payload: dict) -> Path:
-        self.root_dir.mkdir(parents=True, exist_ok=True)
-        path = self._path_for_date(self._today_key())
-        temp_path = path.with_suffix(".tmp")
-        temp_path.write_text(json.dumps(payload, ensure_ascii=True, indent=2), encoding="utf-8")
-        temp_path.replace(path)
-        return path
+    def write_today(self, payload: dict) -> str:
+        return self.storage.write_snapshot(date_key=self._today_key(), payload=payload)
 
 
 @dataclass

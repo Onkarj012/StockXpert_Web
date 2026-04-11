@@ -21,6 +21,7 @@ from app.services.recommendation_snapshot import (
     response_all_horizons_from_snapshot,
     build_snapshot_payload,
 )
+from app.services.snapshot_storage import build_snapshot_storage
 
 
 def _now_iso(tz_name: str) -> str:
@@ -35,7 +36,7 @@ class StockXpertBackendService:
         self._pipeline: InferencePipeline | None = None
         self._last_runs: dict[str, str] = {}
         self.snapshot_store = RecommendationSnapshotStore(
-            root_dir=settings.recommendations_snapshot_dir,
+            storage=build_snapshot_storage(settings),
             timezone=settings.market_timezone,
         )
         self.detail_store = DailyPayloadStore(
@@ -265,7 +266,7 @@ class StockXpertBackendService:
             snapshot_path = self.snapshot_store.write_today(snapshot_payload)
             self._mark_run("recommendations_snapshot")
             return {
-                "path": str(snapshot_path),
+                "path": snapshot_path,
                 "market_date": snapshot_payload["market_date"],
                 "horizons": list(horizons),
             }

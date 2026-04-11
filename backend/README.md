@@ -97,18 +97,24 @@ Returns OHLCV points plus overlays for chart rendering.
 
 ## Daily Snapshot Workflow
 
-Build recommendations for all trained symbols and horizons (1/3/5/7/10), then save to a local JSON snapshot:
+Build recommendations for all trained symbols and horizons (1/3/5/7/10):
 
 `python -m app.jobs.build_recommendation_snapshot`
 
-Default snapshot location:
+Storage behavior:
 
-- `backend/artifacts/cache/recommendations_YYYY-MM-DD.json`
+- local development defaults to `backend/artifacts/cache/recommendations_YYYY-MM-DD.json`
+- production can store recommendation snapshots in Cloudflare R2 using the
+  S3-compatible API
+- when R2 is enabled, the backend writes:
+  - `recommendations/daily/YYYY-MM-DD/all_horizons.json`
+  - `recommendations/daily/latest.json`
 
 Recommended schedule:
 
-- the backend includes a built-in scheduler and refreshes the snapshot before
-  market open by default (`08:00` IST)
+- local development can use the built-in scheduler
+- production should use a Railway cron job to run the snapshot builder before
+  market open (`08:00` IST)
 - the manual job below remains available for one-off rebuilds and verification
 - frontend calls `/api/recommendations` as usual and receives saved data
 - if today's snapshot is missing, the API serves the latest saved snapshot and
@@ -141,12 +147,28 @@ Recommended schedule:
   Index ticker used for regime summary. Default: `^NSEI`
 - `STOCKXPERT_MARKET_TIMEZONE`
   Market timezone used in timestamps. Default: `Asia/Kolkata`
+- `STOCKXPERT_SNAPSHOT_BACKEND`
+  Snapshot backend. One of `local` or `r2`. Default: `local`
 - `STOCKXPERT_RECOMMENDATIONS_SNAPSHOT_DIR`
-  Directory for saved recommendation snapshots. Default: `backend/artifacts/cache`
+  Directory for saved recommendation snapshots in local mode. Default: `backend/artifacts/cache`
+- `STOCKXPERT_R2_BUCKET`
+  Cloudflare R2 bucket for recommendation snapshots
+- `STOCKXPERT_R2_ENDPOINT`
+  Cloudflare R2 S3 endpoint, for example `https://<account-id>.r2.cloudflarestorage.com`
+- `STOCKXPERT_R2_ACCESS_KEY_ID`
+  R2 access key id
+- `STOCKXPERT_R2_SECRET_ACCESS_KEY`
+  R2 secret access key
+- `STOCKXPERT_R2_REGION`
+  R2 region value for the S3 client. Default: `auto`
+- `STOCKXPERT_R2_PREFIX`
+  Object key prefix for recommendation snapshots. Default: `recommendations/daily`
 - `STOCKXPERT_ENABLE_LIVE_RECOMMENDATIONS`
   Allow `?live=true` to run model inference on demand. Default: `false`
+- `STOCKXPERT_FALLBACK_TO_LIVE_WHEN_SNAPSHOT_MISSING`
+  Allow normal API traffic to use live inference when no saved snapshot is available. Default: `true`
 - `STOCKXPERT_SNAPSHOT_SCHEDULE_ENABLED`
-  Enable the built-in daily snapshot scheduler. Default: `true`
+  Enable the built-in daily snapshot scheduler. Default: `true` in local mode and `false` in R2 mode
 - `STOCKXPERT_SNAPSHOT_SCHEDULE_HOUR`
   IST hour for the automatic daily snapshot refresh. Default: `8`
 - `STOCKXPERT_SNAPSHOT_SCHEDULE_MINUTE`

@@ -37,6 +37,7 @@ bun-error.log*
 
 # vercel
 .vercel
+.railway
 
 # typescript
 *.tsbuildinfo

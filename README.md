@@ -17,34 +17,52 @@ npm install
 npm run dev
 ```
 
-## Hosting
+## Production Hosting
 
-This repo is best deployed as two services:
+This repo is intended to be hosted as:
 
-- `frontend/`: Next.js web app
-- `backend/`: FastAPI API with bundled model artifacts
+- `frontend/` on Vercel
+- `backend/` on Railway
+- recommendation snapshots in Cloudflare R2
 
-The safest production setup is:
+The frontend should call the backend through Next.js rewrites:
 
-- host the frontend on Vercel
-- host the backend on Railway or Render
-- set the frontend `BACKEND_URL` env var to your deployed backend URL
+- set `BACKEND_URL` on Vercel to your Railway backend URL
 - leave `NEXT_PUBLIC_API_BASE` empty so the browser uses same-origin `/api/*`
 
-The backend now serves recommendation traffic from a saved daily snapshot by
-default and refreshes that snapshot automatically before market open
-(`08:00` IST unless configured otherwise). If you deploy to an environment
-without persistent storage, attach a persistent volume or move the snapshot
-directory to shared storage so the snapshot survives restarts.
+The backend reads recommendation snapshots from R2 first and falls back to live
+inference when no usable snapshot is available.
 
-That setup avoids browser CORS issues because Next.js proxies `/api/*` to the backend.
+## Railway + R2 Setup
 
-## Deployment Notes
+Configure the Railway backend service with:
 
-- Render should deploy only the `backend/` folder. The checked-in `render.yaml` now sets `rootDir: backend` so the Python service does not upload or inspect the frontend build context.
-- The backend no longer tries to build a fresh recommendation snapshot during startup unless `STOCKXPERT_SNAPSHOT_CATCH_UP_ON_STARTUP=true` is set. This keeps cold starts and health checks faster on hosted platforms.
-- Render is configured for a split production pattern: the web service serves traffic only, stores snapshots on a persistent disk mounted at `/var/data`, and a separate cron job triggers `/api/admin/snapshots/rebuild` on weekdays at `02:30` UTC, which is `08:00` IST.
-- If the snapshot is temporarily missing, the API can fall back to live inference so the frontend does not hard-fail during cold boots or disk resets.
-- Keep generated folders out of deploys and git: `frontend/node_modules`, `frontend/.next`, and backend cache outputs should stay local-only.
+- root directory: `backend`
+- start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- build command: `pip install -r requirements.txt`
 
-See [DEPLOYMENT.md](/Users/onkarj012/Projects/major_pro/StockXpert/DEPLOYMENT.md) for the full step-by-step guide.
+Recommended Railway cron job:
+
+- command: `python -m app.jobs.build_recommendation_snapshot`
+- schedule: weekdays before market open, such as `08:00` IST
+
+Required backend env vars for production:
+
+- `STOCKXPERT_SNAPSHOT_BACKEND=r2`
+- `STOCKXPERT_R2_BUCKET`
+- `STOCKXPERT_R2_ENDPOINT`
+- `STOCKXPERT_R2_ACCESS_KEY_ID`
+- `STOCKXPERT_R2_SECRET_ACCESS_KEY`
+- `STOCKXPERT_R2_REGION=auto`
+- `STOCKXPERT_R2_PREFIX=recommendations/daily`
+
+Recommended production env vars:
+
+- `STOCKXPERT_SNAPSHOT_SCHEDULE_ENABLED=false`
+- `STOCKXPERT_FALLBACK_TO_LIVE_WHEN_SNAPSHOT_MISSING=true`
+
+Keep generated folders and caches out of git and hosting contexts:
+
+- `frontend/node_modules`
+- `frontend/.next`
+- `backend/artifacts/cache`

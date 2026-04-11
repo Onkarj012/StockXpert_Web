@@ -27,12 +27,18 @@ class Settings:
     off_market_ttl_seconds: int
     market_index_symbol: str
     market_timezone: str
+    snapshot_backend: str
     recommendations_snapshot_dir: Path
+    r2_bucket: str | None
+    r2_endpoint: str | None
+    r2_access_key_id: str | None
+    r2_secret_access_key: str | None
+    r2_region: str
+    r2_prefix: str
     enable_live_recommendations: bool
     fallback_to_live_when_snapshot_missing: bool
     snapshot_schedule_enabled: bool
     snapshot_catch_up_on_startup: bool
-    snapshot_trigger_token: str | None
     snapshot_schedule_hour: int
     snapshot_schedule_minute: int
     max_stock_lookback_days: int
@@ -42,6 +48,7 @@ class Settings:
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     backend_root = Path(__file__).resolve().parents[2]
+    snapshot_backend = os.getenv("STOCKXPERT_SNAPSHOT_BACKEND", "local").strip().lower() or "local"
 
     manifest_raw = os.getenv("STOCKXPERT_MANIFEST_PATH", str(backend_root / "artifacts" / "model_manifest.json"))
     manifest_path = Path(manifest_raw)
@@ -87,15 +94,24 @@ def get_settings() -> Settings:
         off_market_ttl_seconds=int(os.getenv("STOCKXPERT_OFF_MARKET_TTL", "3600")),
         market_index_symbol=os.getenv("STOCKXPERT_MARKET_INDEX", "^NSEI"),
         market_timezone=os.getenv("STOCKXPERT_MARKET_TIMEZONE", "Asia/Kolkata"),
+        snapshot_backend=snapshot_backend,
         recommendations_snapshot_dir=snapshot_dir,
+        r2_bucket=os.getenv("STOCKXPERT_R2_BUCKET"),
+        r2_endpoint=os.getenv("STOCKXPERT_R2_ENDPOINT"),
+        r2_access_key_id=os.getenv("STOCKXPERT_R2_ACCESS_KEY_ID"),
+        r2_secret_access_key=os.getenv("STOCKXPERT_R2_SECRET_ACCESS_KEY"),
+        r2_region=os.getenv("STOCKXPERT_R2_REGION", "auto"),
+        r2_prefix=os.getenv("STOCKXPERT_R2_PREFIX", "recommendations/daily"),
         enable_live_recommendations=_get_bool("STOCKXPERT_ENABLE_LIVE_RECOMMENDATIONS", False),
         fallback_to_live_when_snapshot_missing=_get_bool(
             "STOCKXPERT_FALLBACK_TO_LIVE_WHEN_SNAPSHOT_MISSING",
             True,
         ),
-        snapshot_schedule_enabled=_get_bool("STOCKXPERT_SNAPSHOT_SCHEDULE_ENABLED", True),
+        snapshot_schedule_enabled=_get_bool(
+            "STOCKXPERT_SNAPSHOT_SCHEDULE_ENABLED",
+            snapshot_backend == "local",
+        ),
         snapshot_catch_up_on_startup=_get_bool("STOCKXPERT_SNAPSHOT_CATCH_UP_ON_STARTUP", False),
-        snapshot_trigger_token=os.getenv("STOCKXPERT_SNAPSHOT_TRIGGER_TOKEN"),
         snapshot_schedule_hour=int(os.getenv("STOCKXPERT_SNAPSHOT_SCHEDULE_HOUR", "8")),
         snapshot_schedule_minute=int(os.getenv("STOCKXPERT_SNAPSHOT_SCHEDULE_MINUTE", "0")),
         max_stock_lookback_days=int(os.getenv("STOCKXPERT_MAX_STOCK_LOOKBACK_DAYS", "365")),

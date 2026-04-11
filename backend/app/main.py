@@ -10,7 +10,6 @@ from app.core.artifacts import ArtifactRegistry
 from app.core.cache import TTLCache
 from app.core.logging import configure_logging
 from app.core.settings import get_settings
-from app.routers.admin import router as admin_router
 from app.routers.dashboard import router as dashboard_router
 from app.routers.health import router as health_router
 from app.routers.metadata import router as metadata_router
@@ -86,7 +85,6 @@ def root() -> RootResponse:
 
 
 app.include_router(health_router)
-app.include_router(admin_router)
 app.include_router(metadata_router)
 app.include_router(dashboard_router)
 app.include_router(recommendations_router)
